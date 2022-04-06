@@ -5,6 +5,7 @@ import datetime as dt
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3 import PPO
 from stable_baselines3 import A2C
+from stable_baselines3 import TD3
 
 from env.StockTradingEnv import StockTradingEnv
 
@@ -50,14 +51,20 @@ if __name__ == '__main__':
         ticker = get_ticker(sys.argv[1])
     else:
         ticker = get_random_ticker()    
-    print(ticker, start, end)
-    df = ""
-    while len(df) < duration / 2:
+    min = 0
+    df = []
+    while len(df) < duration / 2 or min == 0:
         df = fdr.DataReader(ticker, start, end).reset_index()
+        min = df[df.columns[1:5]].min().min()
+        if min == 0:
+            ticker = get_random_ticker()
+            print(f'{ticker} has zero value')
         import os, sys
         if len(df) < 10:
             sys.exit()
-        df['n'] = df[df.columns[0:4]].median()
+    print(df)
+    df['n'] = df[df.columns[1:5]].median()
+        # sys.exit()
     df = df.sort_values('Date')
 
     # The algorithms require a vectorized environment to run

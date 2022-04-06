@@ -12,7 +12,7 @@ MAX_OPEN_POSITIONS = 5
 MAX_STEPS = 20000
 TRADING_FEE = 0.002
 INITIAL_ACCOUNT_BALANCE = 1000000
-
+WINDOW = 10
 
 class StockTradingEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
