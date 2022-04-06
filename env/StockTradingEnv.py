@@ -34,17 +34,17 @@ class StockTradingEnv(gym.Env):
 
     def _next_observation(self):
         # Get the stock data points for the last 5 days and scale to between 0-1
+        df = self.df.loc[self.current_step: self.current_step + 5]
+        max_share_price = np.max(df[['Open','High','Low','Close']].max())
+        min_share_price = np.min(df[['Open','High','Low','Close']].min())
+        max_shares = np.max(df['Volume'])
+        min_shares = np.min(df['Volume'])
         frame = np.array([
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Open'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'High'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Low'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Close'].values / MAX_SHARE_PRICE,
-            self.df.loc[self.current_step: self.current_step +
-                        5, 'Volume'].values / MAX_NUM_SHARES,
+            (df['Open'].values - min_share_price) / (max_share_price - min_share_price),
+            (df['High'].values - min_share_price) / (max_share_price - min_share_price),
+            (df['Low'].values - min_share_price) / (max_share_price - min_share_price),
+            (df['Close'].values - min_share_price) / (max_share_price - min_share_price),
+            (df['Volume'].values - min_shares) / (max_shares - min_shares),
         ])
 
         # Append additional data and scale each value to between 0-1
@@ -61,22 +61,27 @@ class StockTradingEnv(gym.Env):
 
     def _take_action(self, action):
         # Set the current price to a random price within the time step
-        current_price = random.uniform(
-            self.df.loc[self.current_step, "Open"], self.df.loc[self.current_step, "Close"])
+        current_price = 0
+        while current_price == 0:
+            current_price = random.uniform(
+                self.df.loc[self.current_step, "Low"], self.df.loc[self.current_step, "High"])
 
         action_type = action[0]
         amount = action[1]
 
         if action_type < 1:
             # Buy amount % of balance in shares
-            total_possible = int(self.balance / current_price)
+            total_possible = int(self.balance / (current_price * (1 + TRADING_FEE)))
             shares_bought = int(total_possible * amount)
             prev_cost = self.cost_basis * self.shares_held
             additional_cost = shares_bought * current_price * (1 + TRADING_FEE)
 
             self.balance -= additional_cost
-            self.cost_basis = (
-                prev_cost + additional_cost) / (self.shares_held + shares_bought)
+            if (self.shares_held + shares_bought) == 0:
+                self.cost_basis = 0
+            else:
+                self.cost_basis = (prev_cost + additional_cost) / (self.shares_held + shares_bought)
+            # print(self.cost_basis, prev_cost, additional_cost, self.shares_held, shares_bought)
             self.shares_held += shares_bought
 
         elif action_type < 2:
@@ -101,17 +106,21 @@ class StockTradingEnv(gym.Env):
 
         self.current_step += 1
 
-        if self.current_step > len(self.df.loc[:, 'Open'].values) - 6:
-            self.current_step = 0
+        if self.current_step + 1> len(self.df.loc[:, 'Open'].values) - 6:
+            done = True
+        else:
+            done = False
 
         # delay_modifier = (self.current_step / MAX_STEPS)
         delay_modifier = 1
 
         # reward = self.balance * delay_modifier
-        reward =  self.net_worth 
-        done = self.net_worth <= 0
+        reward =  self.net_worth
+        # done = self.net_worth 
 
         obs = self._next_observation()
+        # if done:
+        #     self.current_step = 0
 
         return obs, reward, done, {}
 
@@ -127,7 +136,7 @@ class StockTradingEnv(gym.Env):
 
         # Set the current step to a random point within the data frame
         self.current_step = random.randint(
-            0, len(self.df.loc[:, 'Open'].values) - 6)
+            0, int(len(self.df) / 3))
 
         # self.df = self.reload()
 

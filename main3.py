@@ -40,7 +40,7 @@ def get_random_ticker():
 
 if __name__ == '__main__':
     
-    sdays = random.randint(365,365*3)
+    sdays = random.randint(365,365*4)
     start_date = dt.now() - timedelta(days=sdays)
     end_date = dt.today()
     duration = (end_date - start_date).days
@@ -54,10 +54,10 @@ if __name__ == '__main__':
     df = ""
     while len(df) < duration / 2:
         df = fdr.DataReader(ticker, start, end).reset_index()
-        print(df)
         import os, sys
         if len(df) < 10:
             sys.exit()
+        df['n'] = df[df.columns[0:4]].median()
     df = df.sort_values('Date')
 
     # The algorithms require a vectorized environment to run
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     if os.path.exists(f'{ticker}_a2c_stock.zip'):
         model = A2C.load(f'{ticker}_a2c_stock')
     else:
-        model = PPO("MlpPolicy", env, verbose=1)
+        model = A2C("MlpPolicy", env, verbose=1)
         model.learn(total_timesteps=50000)
         model.save(f'{ticker}_a2c_stock')
 
