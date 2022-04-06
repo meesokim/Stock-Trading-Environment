@@ -39,24 +39,23 @@ def get_random_ticker():
     krx = get_krx()
     return random.choice(krx.Symbol[~krx.ListingDate.isnull()].values)
 
-if __name__ == '__main__':
-    
+def learn_and_predict():
     sdays = random.randint(365,365*4)
     start_date = dt.now() - timedelta(days=sdays)
     end_date = dt.today()
     duration = (end_date - start_date).days
     start = start_date.strftime('%Y-%m-%d')
     end = end_date.strftime('%Y-%m-%d')
-    if len(sys.argv) > 1:
-        ticker = get_ticker(sys.argv[1])
-    else:
-        ticker = get_random_ticker()    
+    # if len(sys.argv) > 1:
+    #     ticker = get_ticker(sys.argv[1])
+    # else:
+    ticker = get_random_ticker()    
     min = 0
     df = []
     while len(df) < duration / 2 or min == 0:
         df = fdr.DataReader(ticker, start, end).reset_index()
         min = df[df.columns[1:5]].min().min()
-        if min == 0:
+        if min == 0 or len(df) > 10:
             ticker = get_random_ticker()
             print(f'{ticker} has zero value')
         import os, sys
@@ -85,3 +84,9 @@ if __name__ == '__main__':
         env.render()
 
     torch.save(model.policy.state_dict(), "test.pt")
+
+from multiprocessing import Pool
+
+if __name__ == '__main__':
+    while True:
+        learn_and_predict()
