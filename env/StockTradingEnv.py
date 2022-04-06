@@ -10,20 +10,20 @@ MAX_NUM_SHARES = 2147483647
 MAX_SHARE_PRICE = 5000
 MAX_OPEN_POSITIONS = 5
 MAX_STEPS = 20000
-
-INITIAL_ACCOUNT_BALANCE = 10000
+TRADING_FEE = 0.002
+INITIAL_ACCOUNT_BALANCE = 1000000
 
 
 class StockTradingEnv(gym.Env):
     """A stock trading environment for OpenAI gym"""
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, df):
+    def __init__(self, df, reload):
         super(StockTradingEnv, self).__init__()
 
         self.df = df
         self.reward_range = (0, MAX_ACCOUNT_BALANCE)
-
+        self.reload = reload
         # Actions of the format Buy x%, Sell x%, Hold, etc.
         self.action_space = spaces.Box(
             low=np.array([0, 0]), high=np.array([3, 1]), dtype=np.float16)
@@ -72,7 +72,7 @@ class StockTradingEnv(gym.Env):
             total_possible = int(self.balance / current_price)
             shares_bought = int(total_possible * amount)
             prev_cost = self.cost_basis * self.shares_held
-            additional_cost = shares_bought * current_price
+            additional_cost = shares_bought * current_price * (1 + TRADING_FEE)
 
             self.balance -= additional_cost
             self.cost_basis = (
@@ -82,7 +82,7 @@ class StockTradingEnv(gym.Env):
         elif action_type < 2:
             # Sell amount % of shares held
             shares_sold = int(self.shares_held * amount)
-            self.balance += shares_sold * current_price
+            self.balance += shares_sold * current_price * (1 - TRADING_FEE)
             self.shares_held -= shares_sold
             self.total_shares_sold += shares_sold
             self.total_sales_value += shares_sold * current_price
@@ -104,9 +104,11 @@ class StockTradingEnv(gym.Env):
         if self.current_step > len(self.df.loc[:, 'Open'].values) - 6:
             self.current_step = 0
 
-        delay_modifier = (self.current_step / MAX_STEPS)
+        # delay_modifier = (self.current_step / MAX_STEPS)
+        delay_modifier = 1
 
-        reward = self.balance * delay_modifier
+        # reward = self.balance * delay_modifier
+        reward =  self.net_worth 
         done = self.net_worth <= 0
 
         obs = self._next_observation()
@@ -126,6 +128,8 @@ class StockTradingEnv(gym.Env):
         # Set the current step to a random point within the data frame
         self.current_step = random.randint(
             0, len(self.df.loc[:, 'Open'].values) - 6)
+
+        # self.df = self.reload()
 
         return self._next_observation()
 

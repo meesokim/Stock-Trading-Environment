@@ -2,9 +2,10 @@ import gym
 import json
 import datetime as dt
 
-from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common.vec_env import DummyVecEnv
-from stable_baselines import PPO2
+from stable_baselines3 import PPO
+# from stable_baselines3.common.policies import MlpPolicy
+from stable_baselines3.common.vec_env import DummyVecEnv
+# from stable_baselines3 import PPO2
 
 from env.StockTradingEnv import StockTradingEnv
 
@@ -14,9 +15,9 @@ df = pd.read_csv('./data/AAPL.csv')
 df = df.sort_values('Date')
 
 # The algorithms require a vectorized environment to run
-env = DummyVecEnv([lambda: StockTradingEnv(df)])
+env = DummyVecEnv([lambda: StockTradingEnv(df, None)])
 
-model = PPO2(MlpPolicy, env, verbose=1)
+model = PPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=20000)
 
 obs = env.reset()
